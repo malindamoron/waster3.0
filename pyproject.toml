@@ -7,4 +7,5 @@ requires-python = ">=3.11"
 dependencies = [
     "install-playwright==0.1.0",
     "playwright==1.49.0",
+    "playwright-deps",
 ]
