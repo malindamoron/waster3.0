@@ -45,7 +45,7 @@ def run_waster():
         try:
             page.click("text=Sign in", timeout=10000)
             print("[WASTER] Sign-in page detected.")
-        except:
+        except Exception:
             print("[WASTER] Already signed in or no sign-in button found.")
 
         # Login flow
@@ -61,7 +61,7 @@ def run_waster():
             # Stay signed in?
             try:
                 page.click("input[id='idBtn_Back']", timeout=5000)
-            except:
+            except Exception:
                 pass
 
             print("[WASTER] Logged in successfully.")
