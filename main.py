@@ -55,12 +55,18 @@ def ask_question(page, question):
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        page.wait_for_selector(".cib-serp-main", timeout=30000)
-        response = page.locator(".cib-serp-main").inner_text()
-        return response
-    except TimeoutError:
+        page.wait_for_selector(".cib-message-main", timeout=40000)
+        messages = page.locator(".cib-message-main")
+        response_text = "\n\n".join(messages.all_inner_texts())
+        
+        return response_text if response_text.strip() else "[ERROR] Empty response received."
+
+except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
         return "[ERROR] Copilot did not respond."
+    except Exception as e:
+        print(f"[WASTER] Unexpected error while asking question: {e}")
+        return f"[ERROR] {str(e)}"
 
 def main():
     with sync_playwright() as p:
