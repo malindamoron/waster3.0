@@ -1,101 +1,93 @@
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+from playwright.sync_api import sync_playwright, TimeoutError
 
-import time 
-import random 
-from playwright.sync_api import sync_playwright 
-from getpass import getpass
+EMAIL = "shashisunil3333@gmail.com"
+PASSWORD = "WWW.YOUTUBE.COM"  # Replace this before running
 
-# --- UserCredentials ---
+COMMANDS = ["today's news", "what if news", "future releases"]
+SAVE_FOLDER = "/hippo"
 
-EMAIL = "shashisunil3333@gmail.com" 
-PASSWORD = "WWW.YOUTUBE.COM"  # Fill manually below
+Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
-# --- Command Variants ---
+def save_response(title, text):
+    safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "_")).rstrip()
+    date = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = f"{SAVE_FOLDER}/{safe_title}_{date}.txt"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(text)
 
-COMMANDS = [ 
-    "generate copilot news today", 
-    "what if news", 
-    "future releases of movies and series", 
-    "today's trending news" 
-]
+def login_to_copilot(page):
+    try:
+        page.goto("https://copilot.microsoft.com/", timeout=60000)
 
-# --- Delay Config ---
+        if "sign in" in page.content().lower():
+            print("[WASTER] Sign-in page detected.")
+            page.click("text=Sign in")
+            page.wait_for_selector('input[type="email"]', timeout=15000)
+            page.fill('input[type="email"]', EMAIL)
+            page.click('input[type="submit"]')
 
-REFRESH_INTERVAL = 210  # seconds = 3.5 minutes
+            page.wait_for_selector('input[type="password"]', timeout=15000)
+            page.fill('input[type="password"]', PASSWORD)
+            page.click('input[type="submit"]')
 
-# --- Main Function ---
+            try:
+                page.wait_for_selector('input[type="submit"]', timeout=5000)
+                page.click('input[type="submit"]')  # "Stay signed in?"
+            except:
+                pass
 
-def run_waster():
-    global PASSWORD
-    if not PASSWORD:
-        PASSWORD = getpass("Enter your Microsoft password: ")
+            print("[WASTER] Login successful.")
+        else:
+            print("[WASTER] Already logged in or no login prompt found.")
+    except Exception as e:
+        print(f"[WASTER] Login failed: {e}")
 
+def ask_question(page, question):
+    try:
+        page.wait_for_selector("textarea", timeout=20000)
+        textarea = page.locator("textarea")
+        textarea.fill(question)
+        textarea.press("Enter")
+        print(f"[WASTER] Sent: {question}")
+
+        page.wait_for_selector(".cib-serp-main", timeout=30000)
+        response = page.locator(".cib-serp-main").inner_text()
+        return response
+    except TimeoutError:
+        print("[WASTER] Timeout waiting for Copilot response.")
+        return "[ERROR] Copilot did not respond."
+
+def main():
     with sync_playwright() as p:
-        print("[WASTER] Launching browser...")
-        browser = p.chromium.launch(headless=False, args=[
-            "--disable-blink-features=AutomationControlled",
-            "--start-maximized"
-        ])
+        browser = p.chromium.launch(
+            headless=False,
+            executable_path="/usr/bin/chromium-browser",
+            args=[
+                "--no-sandbox",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--start-maximized"
+            ]
+        )
         context = browser.new_context()
         page = context.new_page()
 
-        print("[WASTER] Navigating to Copilot...")
-        page.goto("https://copilot.microsoft.com")
+        login_to_copilot(page)
 
-        # Click sign in if needed
-        try:
-            page.click("text=Sign in", timeout=10000)
-            print("[WASTER] Sign-in page detected.")
-        except Exception:
-            print("[WASTER] Already signed in or no sign-in button found.")
-
-        # Login flow
-        try:
-            page.fill('input[type="email"]', EMAIL)
-            page.click('input[type="submit"]')
-            page.wait_for_timeout(2000)
-
-            page.fill('input[type="password"]', PASSWORD)
-            page.click('input[type="submit"]')
-            page.wait_for_timeout(3000)
-
-            # Stay signed in?
-            try:
-                page.click("input[id='idBtn_Back']", timeout=5000)
-            except Exception:
-                pass
-
-            print("[WASTER] Logged in successfully.")
-        except Exception as e:
-            print("[WASTER] Login failed: ", e)
-
-        # Start command loop
         while True:
-            try:
-                command = random.choice(COMMANDS)
-                print(f"\n[WASTER] Sending command: {command}")
+            for command in COMMANDS:
+                print(f"[WASTER] Asking: {command}")
+                response = ask_question(page, command)
+                save_response(command, response)
+                print(f"[WASTER] Response for '{command}' saved.")
+                time.sleep(10)
 
-                # Locate text box and enter command
-                page.wait_for_selector("textarea", timeout=15000)
-                page.fill("textarea", command)
-                page.keyboard.press("Enter")
-
-                # Wait for response to generate
-                page.wait_for_selector(".cib-serp-main", timeout=25000)
-                time.sleep(8)  # Wait for full reply
-
-                # Extract text content
-                containers = page.query_selector_all(".cib-serp-main")
-                for i, block in enumerate(containers):
-                    text = block.inner_text()
-                    print(f"[RESPONSE {i+1}]\n{text}\n")
-
-            except Exception as err:
-                print("[WASTER] Error during interaction:", err)
-
-            print(f"[WASTER] Waiting {REFRESH_INTERVAL/60:.1f} minutes before next round...\n")
-            time.sleep(REFRESH_INTERVAL)
-
-# --- Entry Point ---
+            print("[WASTER] Sleeping 3.5 minutes...\n")
+            time.sleep(210)
 
 if __name__ == "__main__":
-    run_waster()
+    main()
