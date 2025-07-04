@@ -5,10 +5,10 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError
 
 EMAIL = "shashisunil3333@gmail.com"
-PASSWORD = "WWW.YOUTUBE.COM"  # Replace with actual password
+PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your actual password
 
 COMMANDS = ["today's news", "what if news", "future releases"]
-SAVE_FOLDER = "hippo"  # Don't use absolute like /hippo unless necessary
+SAVE_FOLDER = "hippo"  # Folder to store saved responses
 
 # Ensure folder exists
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
@@ -58,10 +58,10 @@ def ask_question(page, question):
         page.wait_for_selector(".cib-message-main", timeout=40000)
         messages = page.locator(".cib-message-main")
         response_text = "\n\n".join(messages.all_inner_texts())
-        
+
         return response_text if response_text.strip() else "[ERROR] Empty response received."
 
-except TimeoutError:
+    except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
         return "[ERROR] Copilot did not respond."
     except Exception as e:
