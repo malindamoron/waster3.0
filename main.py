@@ -5,12 +5,12 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError
 
 EMAIL = "shashisunil3333@gmail.com"
-PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your actual password
+PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your real password
 
 COMMANDS = ["today's news", "what if news", "future releases"]
-SAVE_FOLDER = "hippo"  # Folder to store saved responses
+SAVE_FOLDER = "hippo"
 
-# Ensure folder exists
+# Create save folder if it doesn't exist
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def save_response(title, text):
@@ -55,11 +55,17 @@ def ask_question(page, question):
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        page.wait_for_selector(".cib-message-main", timeout=40000)
-        messages = page.locator(".cib-message-main")
-        response_text = "\n\n".join(messages.all_inner_texts())
+        # Wait for visible Copilot messages to load
+        page.wait_for_selector(".cib-message-group", timeout=40000)
+        messages = page.locator(".cib-message-group .cib-message-main")
+        response_text = "\n\n".join(
+            msg.strip() for msg in messages.all_inner_texts() if msg.strip()
+        )
 
-        return response_text if response_text.strip() else "[ERROR] Empty response received."
+        if not response_text:
+            raise Exception("Copilot returned an empty response.")
+
+        return response_text
 
     except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
