@@ -10,7 +10,7 @@ PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your real password
 COMMANDS = ["today's news", "what if news", "future releases"]
 SAVE_FOLDER = "hippo"
 
-# Create save folder if it doesn't exist
+# Create folder if it doesn't exist
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def save_response(title, text):
@@ -51,21 +51,30 @@ def ask_question(page, question):
     try:
         textarea = page.get_by_test_id("composer-input")
         textarea.wait_for(state="visible", timeout=20000)
+
+        # Count responses before asking
+        previous_messages = page.locator(".cib-message-group .cib-message-main")
+        previous_count = previous_messages.count()
+
+        # Send question
         textarea.fill(question)
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        # Wait for visible Copilot messages to load
-        page.wait_for_selector(".cib-message-group", timeout=40000)
-        messages = page.locator(".cib-message-group .cib-message-main")
-        response_text = "\n\n".join(
-            msg.strip() for msg in messages.all_inner_texts() if msg.strip()
-        )
+        # Wait for new message to appear
+        for _ in range(40):  # Max 40 x 0.5s = 20s
+            time.sleep(0.5)
+            new_count = previous_messages.count()
+            if new_count > previous_count:
+                break
+        else:
+            raise TimeoutError("Response did not appear in time")
 
-        if not response_text:
-            raise Exception("Copilot returned an empty response.")
+        # Grab the **last message block only**
+        last_message = previous_messages.nth(new_count - 1)
+        response_text = last_message.inner_text().strip()
 
-        return response_text
+        return response_text if response_text else "[ERROR] Empty response received."
 
     except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
@@ -97,7 +106,7 @@ def main():
                 print(f"[WASTER] Asking: {command}")
                 response = ask_question(page, command)
                 save_response(command, response)
-                print(f"[WASTER] Response for '{command}' saved.")
+                print(f"[WASTER] Response for '{command}' saved.\n")
                 time.sleep(10)
 
             print("[WASTER] Sleeping 3.5 minutes...\n")
