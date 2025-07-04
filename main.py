@@ -5,17 +5,18 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError
 
 EMAIL = "shashisunil3333@gmail.com"
-PASSWORD = "WWW.YOUTUBE.COM"  # Replace this before running
+PASSWORD = "WWW.YOUTUBE.COM"  # Replace with actual password
 
 COMMANDS = ["today's news", "what if news", "future releases"]
-SAVE_FOLDER = "/hippo"
+SAVE_FOLDER = "hippo"  # Don't use absolute like /hippo unless necessary
 
+# Ensure folder exists
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def save_response(title, text):
     safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "_")).rstrip()
     date = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"{SAVE_FOLDER}/{safe_title}_{date}.txt"
+    filename = os.path.join(SAVE_FOLDER, f"{safe_title}_{date}.txt")
     with open(filename, "w", encoding="utf-8") as f:
         f.write(text)
 
@@ -36,7 +37,7 @@ def login_to_copilot(page):
 
             try:
                 page.wait_for_selector('input[type="submit"]', timeout=5000)
-                page.click('input[type="submit"]')  # "Stay signed in?"
+                page.click('input[type="submit"]')  # Stay signed in
             except:
                 pass
 
@@ -65,7 +66,6 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=False,
-            executable_path="/usr/bin/chromium",
             args=[
                 "--no-sandbox",
                 "--disable-blink-features=AutomationControlled",
