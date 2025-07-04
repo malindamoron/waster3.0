@@ -68,8 +68,10 @@ def main():
             headless=False,
             args=[
                 "--no-sandbox",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-software-rasterizer",
+                "--single-process",
                 "--start-maximized"
             ]
         )
