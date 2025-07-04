@@ -49,8 +49,8 @@ def login_to_copilot(page):
 
 def ask_question(page, question):
     try:
-        page.wait_for_selector("textarea", timeout=20000)
-        textarea = page.locator("textarea")
+        page.wait_for_selector("textarea#userInput", timeout=20000)
+        textarea = page.locator("textarea#userInput")
         textarea.fill(question)
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
