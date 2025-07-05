@@ -8,13 +8,15 @@ EMAIL = "shashisunil3333@gmail.com"
 PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your actual password
 
 COMMANDS = ["today's news", "what if news", "future releases"]
-SAVE_FOLDER = "hippo"
+SAVE_FOLDER = "hippo"  # Folder to store saved responses
+
+# Ensure folder exists
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def save_response(title, text):
     safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "_")).rstrip()
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = os.path.join(SAVE_FOLDER, f"{safe_title}_{timestamp}.txt")
+    date = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = os.path.join(SAVE_FOLDER, f"{safe_title}_{date}.txt")
     with open(filename, "w", encoding="utf-8") as f:
         f.write(text)
 
@@ -35,7 +37,7 @@ def login_to_copilot(page):
 
             try:
                 page.wait_for_selector('input[type="submit"]', timeout=5000)
-                page.click('input[type="submit"]')  # Stay signed in prompt
+                page.click('input[type="submit"]')  # Stay signed in
             except:
                 pass
 
@@ -53,27 +55,14 @@ def ask_question(page, question):
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        # Wait until shadow DOM has at least 1 message
-        page.wait_for_function("""
-            () => {
-                const root = document.querySelector('.cib-serp-main')?.shadowRoot;
-                const group = root?.querySelector('cib-message-group');
-                const msgs = group?.shadowRoot?.querySelectorAll('cib-message');
-                return msgs && msgs.length > 0;
-            }
-        """, timeout=30000)
+        # CSP-safe wait using Python callable
+        page.wait_for_function(lambda: page.locator("cib-message").count() > 0, timeout=40000)
 
-        # Extract messages from shadow DOM
-        response_text = page.evaluate("""
-            () => {
-                const root = document.querySelector('.cib-serp-main')?.shadowRoot;
-                const group = root?.querySelector('cib-message-group');
-                const msgs = group?.shadowRoot?.querySelectorAll('cib-message');
-                return Array.from(msgs).map(msg => msg.shadowRoot.innerText.trim()).filter(Boolean).join("\\n\\n");
-            }
-        """)
+        messages = page.locator("cib-message")
+        response_texts = messages.all_inner_texts()
+        response_text = "\n\n".join(response_texts).strip()
 
-        return response_text if response_text.strip() else "[ERROR] Empty response received."
+        return response_text if response_text else "[ERROR] Empty response received."
 
     except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
@@ -105,7 +94,7 @@ def main():
                 print(f"[WASTER] Asking: {command}")
                 response = ask_question(page, command)
                 save_response(command, response)
-                print(f"[WASTER] Response for '{command}' saved.\n")
+                print(f"[WASTER] Response for '{command}' saved.")
                 time.sleep(10)
 
             print("[WASTER] Sleeping 3.5 minutes...\n")
