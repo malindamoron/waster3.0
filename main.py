@@ -56,7 +56,7 @@ def ask_question(page, question):
         print(f"[WASTER] Sent: {question}")
 
         # CSP-safe wait using Python callable
-        page.wait_for_function("document.querySelectorAll('cib-message').length > 0", timeout=40000)
+        page.wait_for_selector("document.querySelectorAll('cib-message').length > 0", timeout=40000)
         
         messages = page.locator("cib-message")
         response_texts = messages.all_inner_texts()
