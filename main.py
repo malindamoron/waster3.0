@@ -5,18 +5,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError
 
 EMAIL = "shashisunil3333@gmail.com"
-PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your real password
+PASSWORD = "WWW.YOUTUBE.COM"  # Replace with your actual password
 
 COMMANDS = ["today's news", "what if news", "future releases"]
 SAVE_FOLDER = "hippo"
-
-# Create folder if it doesn't exist
 Path(SAVE_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def save_response(title, text):
     safe_title = "".join(c for c in title if c.isalnum() or c in (" ", "_")).rstrip()
-    date = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = os.path.join(SAVE_FOLDER, f"{safe_title}_{date}.txt")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    filename = os.path.join(SAVE_FOLDER, f"{safe_title}_{timestamp}.txt")
     with open(filename, "w", encoding="utf-8") as f:
         f.write(text)
 
@@ -37,7 +35,7 @@ def login_to_copilot(page):
 
             try:
                 page.wait_for_selector('input[type="submit"]', timeout=5000)
-                page.click('input[type="submit"]')  # Stay signed in
+                page.click('input[type="submit"]')  # Stay signed in prompt
             except:
                 pass
 
@@ -51,30 +49,31 @@ def ask_question(page, question):
     try:
         textarea = page.get_by_test_id("composer-input")
         textarea.wait_for(state="visible", timeout=20000)
-
-        # Count responses before asking
-        previous_messages = page.locator(".cib-message-group .cib-message-main")
-        previous_count = previous_messages.count()
-
-        # Send question
         textarea.fill(question)
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        # Wait for new message to appear
-        for _ in range(40):  # Max 40 x 0.5s = 20s
-            time.sleep(0.5)
-            new_count = previous_messages.count()
-            if new_count > previous_count:
-                break
-        else:
-            raise TimeoutError("Response did not appear in time")
+        # Wait until shadow DOM has at least 1 message
+        page.wait_for_function("""
+            () => {
+                const root = document.querySelector('.cib-serp-main')?.shadowRoot;
+                const group = root?.querySelector('cib-message-group');
+                const msgs = group?.shadowRoot?.querySelectorAll('cib-message');
+                return msgs && msgs.length > 0;
+            }
+        """, timeout=30000)
 
-        # Grab the **last message block only**
-        last_message = previous_messages.nth(new_count - 1)
-        response_text = last_message.inner_text().strip()
+        # Extract messages from shadow DOM
+        response_text = page.evaluate("""
+            () => {
+                const root = document.querySelector('.cib-serp-main')?.shadowRoot;
+                const group = root?.querySelector('cib-message-group');
+                const msgs = group?.shadowRoot?.querySelectorAll('cib-message');
+                return Array.from(msgs).map(msg => msg.shadowRoot.innerText.trim()).filter(Boolean).join("\\n\\n");
+            }
+        """)
 
-        return response_text if response_text else "[ERROR] Empty response received."
+        return response_text if response_text.strip() else "[ERROR] Empty response received."
 
     except TimeoutError:
         print("[WASTER] Timeout waiting for Copilot response.")
