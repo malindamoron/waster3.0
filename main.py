@@ -55,9 +55,9 @@ def ask_question(page, question):
         textarea.press("Enter")
         print(f"[WASTER] Sent: {question}")
 
-        # CSP-safe wait using Python callable
-        page.wait_for_selector("document.querySelectorAll('cib-message').length > 0", timeout=40000)
-        
+        # Wait for actual Copilot messages to appear
+        page.wait_for_selector("cib-message", timeout=40000)
+
         messages = page.locator("cib-message")
         response_texts = messages.all_inner_texts()
         response_text = "\n\n".join(response_texts).strip()
